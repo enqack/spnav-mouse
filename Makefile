@@ -1,13 +1,18 @@
-# Makefile for spnav_mouse
-
 TARGET     := spnav-mouse
-SRC        := src/spnav-mouse.c
-OBJ        := $(SRC:.c=.o)
 CC         := gcc
-CFLAGS     := -Wall -Wextra -O2
+CFLAGS     := -Wall -Wextra -O2 -std=gnu99
 LDFLAGS    := -lspnav -lm
 PREFIX     := /usr/local
 BINDIR     := $(PREFIX)/bin
+
+SRC_DIR    := src
+SRC        := $(SRC_DIR)/main.c \
+		      $(SRC_DIR)/args.c \
+              $(SRC_DIR)/input.c \
+              $(SRC_DIR)/util.c \
+              $(SRC_DIR)/spnav.c
+
+OBJ        := $(SRC:.c=.o)
 
 .PHONY: all clean install uninstall
 
@@ -16,7 +21,7 @@ all: $(TARGET)
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.o: %.c
+$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: $(TARGET)
@@ -27,4 +32,3 @@ uninstall:
 
 clean:
 	rm -f $(TARGET) $(OBJ)
-
