@@ -1,7 +1,7 @@
 # Makefile for spnav_mouse
 
 TARGET     := spnav-mouse
-SRC        := spnav-mouse.c
+SRC        := src/spnav-mouse.c
 OBJ        := $(SRC:.c=.o)
 CC         := gcc
 CFLAGS     := -Wall -Wextra -O2

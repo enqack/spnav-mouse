@@ -7,23 +7,35 @@
 #include <linux/uinput.h>
 #include <signal.h>
 #include <argp.h>
+#include <math.h>
 #include <spnav.h>
+
+static inline int clampi(int val, int min, int max) {
+	return val < min ? min : (val > max ? max : val);
+}
+
+static inline float clampf(float val, float min, float max) {
+	return val < min ? min : (val > max ? max : val);
+}
 
 static char doc[] = "SpaceMouse to mouse control bridge.";
 const char *argp_program_version = "Version: 0.5";
 
 static struct argp_option options[] = {
-	{"global-sensitivity",   's', "SENSITIVITY", 0, "Set global sensitivity" },
-	{"movement-sensitivity", 'm', "SENSITIVITY", 0, "Set movement sensitivity" },
-	{"scroll-sensitivity",   'r', "SENSITIVITY", 0, "Set scroll sensitivity" },
-	{"scroll-deadzone",      'd', "DEADZONE",    0, "Set scroll deadzone" },
-  {"verbose",              'v', 0,             0, "Produce verbose output" },
-  {"grab",    						 'g', 0,             0, "Exclusively grab SpaceMouse" },
+	{"global-sensitivity",    's', "SENSITIVITY", 0, "Set global sensitivity",           0 },
+	{"movement-sensitivity",  'm', "SENSITIVITY", 0, "Set movement sensitivity",         0 },
+	{"movement-acceleration", 'a', "FACTOR",      0, "Set movement acceleration factor", 0 },
+	{"scroll-sensitivity",    'r', "SENSITIVITY", 0, "Set scroll sensitivity",           1 },
+	{"scroll-acceleration",   'o', "FACTOR",      0, "Set scroll acceleration factor",   1 },
+	{"scroll-deadzone",       'd', "DEADZONE",    0, "Set scroll deadzone",              1 },
+  {"verbose",               'v', 0,             0, "Produce verbose output",           2 },
+  {"grab",    						  'g', 0,             0, "Exclusively grab SpaceMouse",      2 },
   { 0 }
 };
 
 struct arguments {
-  char *global_sensitivity, *movement_sensitivity, *scroll_sensitivity, *scroll_deadzone;
+  char *global_sensitivity, *movement_sensitivity, *movement_acceleration;
+  char *scroll_sensitivity, *scroll_acceleration, *scroll_deadzone;
 	int verbose, grab;
 };
 
@@ -39,8 +51,14 @@ parse_opt (int key, char *arg, struct argp_state *state) {
   	case 'm':
   		arguments->movement_sensitivity = arg;
   		break;
+  	case 'a':
+  		arguments->movement_acceleration = arg;
+  		break;
   	case 'r':
   		arguments->scroll_sensitivity = arg;
+  		break;
+  	case 'o':
+  		arguments->scroll_acceleration = arg;
   		break;
   	case 'd':
   		arguments->scroll_deadzone = arg;
@@ -101,6 +119,13 @@ void send_button(int code, int press) {
 emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
 }
 
+int apply_acceleration(int value, float factor) {
+	if (value == 0) return 0;
+	float sign = value < 0 ? -1.0f : 1.0f;
+	float absval = fabsf((float)value);
+	return (int)(sign * (absval * absval * factor));
+}
+
 void setup_uinput() {
 	struct uinput_setup usetup;
 
@@ -141,10 +166,12 @@ int main(int argc, char **argv) {
   // defaults
 	arguments.grab = 0;
 	arguments.verbose = 0;
-  arguments.scroll_deadzone = "2";
-	arguments.scroll_sensitivity = "0.025";
 	arguments.global_sensitivity = "0.5";
 	arguments.movement_sensitivity = "0.10";
+	arguments.movement_acceleration = "0.5";
+  arguments.scroll_deadzone = "2";
+	arguments.scroll_sensitivity = "0.025";
+	arguments.scroll_acceleration = "0.125";
 
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
@@ -181,9 +208,9 @@ int main(int argc, char **argv) {
 			continue;
 
 		if (sev.type == SPNAV_EVENT_MOTION) {
-      int tx = sev.motion.x;
-			int tz = -sev.motion.z;
-			int scroll = sev.motion.ry;
+			int tx = apply_acceleration(sev.motion.x, atof(arguments.movement_acceleration));
+			int tz = apply_acceleration(-sev.motion.z, atof(arguments.movement_acceleration));
+			int scroll = apply_acceleration(sev.motion.ry, atof(arguments.scroll_acceleration));
 
 			if (tx || tz)
 				if (arguments.verbose)
@@ -204,4 +231,3 @@ int main(int argc, char **argv) {
     spnav_remove_events(SPNAV_EVENT_MOTION);
 	}
 }
-
