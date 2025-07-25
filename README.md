@@ -21,29 +21,28 @@ A Linux utility that bridges SpaceMouse (3D mouse) input to standard mouse contr
 ## Installation
 
 ```
-make && sudo make install # Optional, installs to /usr/local/bin
+make
+sudo make install # Optional, installs to /usr/local/bin
 ```
 
 ## Usage
 
 Basic usage:
 ```
-bash spnav-mouse
+spnav-mouse
 ``` 
 
 With options:
 ```
-bash spnav-mouse [-s SENSITIVITY] [-d DEADZONE] [-g] [-v]
+spnav-mouse [-s SENSITIVITY] [-d DEADZONE] [-g] [-v]
 ``` 
 
-### Command Line Options
+### Basic Command Line Options
 
-- `-s, --sensitivity SENSITIVITY`: Set the mouse movement sensitivity (default: 1.0)
-- `-d, --deadzone DEADZONE`: Set the deadzone for movement detection (default: 1.0)
+- `-s, --global-sensitivity SENSITIVITY`: Set the mouse movement global sensitivity (default: 1.0)
+- `-d, --scroll-deadzone DEADZONE`: Set the deadzone for movement detection (default: 1.0)
 - `-g, --grab`: Exclusively grab the SpaceMouse device
 - `-v, --verbose`: Enable verbose output for debugging
-- `--version`: Show version information
-- `--help`: Display help message
 
 ## Controls
 
