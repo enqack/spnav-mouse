@@ -35,7 +35,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   return 0;
 }
 
-struct argp argp = { options, parse_opt, 0, doc };
+struct argp argp = { options, parse_opt, 0, doc, 0, 0, 0};
 
 void parse_arguments(int argc, char **argv, struct arguments *arguments) {
   arguments->grab = 0;

@@ -7,10 +7,12 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <spnav.h>
 
 int uinput_fd = -1;
 
-void cleanup(int sig) {
+void cleanup(void) {
+  spnav_close();
   if (uinput_fd > 0) {
     ioctl(uinput_fd, UI_DEV_DESTROY);
     close(uinput_fd);
@@ -26,7 +28,9 @@ void emit(int fd, int type, int code, int val) {
     .value = val,
   };
   gettimeofday(&ie.time, NULL);
-  write(fd, &ie, sizeof(ie));
+  if (write(fd, &ie, sizeof(ie)) != sizeof(ie)) {
+    perror("Failed to write input event");
+  }
 }
 
 void send_mouse_move(int x, int y) {
