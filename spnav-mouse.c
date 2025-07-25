@@ -13,6 +13,8 @@ static char doc[] = "SpaceMouse to mouse control bridge.";
 const char *argp_program_version = "Version: 0.5";
 
 static struct argp_option options[] = {
+	{"sensitivity", 's', "SENSITIVITY", 0, "Set sensitivity" },
+	{"deadzone", 'd', "deadzone", 0, "Set deadzone" },
   {"verbose", 'v', 0, 0, "Produce verbose output" },
   {"grab",    'g', 0, 0, "Exclusively grab SpaceMouse" },
   { 0 }
@@ -20,7 +22,8 @@ static struct argp_option options[] = {
 
 struct arguments
 {
-  int verbose, grab;
+  char *sensitivity, *deadzone;
+	int verbose, grab;
 };
 
 static error_t
@@ -30,6 +33,12 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   switch (key)
     {
+  	case 's':
+  		arguments->sensitivity = arg;
+  		break;
+  	case 'd':
+  		arguments->deadzone = arg;
+  		break;
     case 'g':
       arguments->grab = 1;
       break;
@@ -66,11 +75,11 @@ void emit(int fd, int type, int code, int val) {
   (void)write(fd, &ie, sizeof(ie));
 }
 
-void send_mouse_move(int dx, int dy) {
-	if (dx)
-		emit(uinput_fd, EV_REL, REL_X, dx);
-	if (dy)
-		emit(uinput_fd, EV_REL, REL_Y, dy);
+void send_mouse_move(int tz, int scroll) {
+	if (tz)
+		emit(uinput_fd, EV_REL, REL_X, tz);
+	if (scroll)
+		emit(uinput_fd, EV_REL, REL_Y, scroll);
 	emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
 }
 
@@ -123,8 +132,11 @@ int main(int argc, char **argv) {
 
   struct arguments arguments;
 
+  // defaults
 	arguments.grab = 0;
 	arguments.verbose = 0;
+  arguments.deadzone = "2";
+  arguments.sensitivity = "1.0";
 
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
@@ -135,28 +147,31 @@ int main(int argc, char **argv) {
 
 	setup_uinput();
 
+	spnav_cfg_set_grab(arguments.grab);
+	spnav_cfg_set_sens(atof(arguments.sensitivity));
+
+	// Clamp deadzone axis between 0 and spnav_dev_axes-1
+  spnav_cfg_set_deadzone(4, atoi(arguments.deadzone));
+
 	spnav_event sev;
-	const int motion_scale = 10;
-	const int scroll_scale = 50
-	;
 
 	while (1) {
 		if (spnav_wait_event(&sev) <= 0)
 			continue;
 
 		if (sev.type == SPNAV_EVENT_MOTION) {
-      int dx = sev.motion.x / motion_scale;
-			int dz = -sev.motion.z / motion_scale;
-			int dy = sev.motion.y / scroll_scale;
+      int tx = sev.motion.x;
+			int tz = -sev.motion.z;
+			int scroll = sev.motion.ry;
 
-			if (dx || dz)
+			if (tx || tz)
 				if (arguments.verbose)
-        	printf("MOVE: dx=%d zy=%d\n", dx, dz);
-				send_mouse_move(dx, dz);
-			if (dy)
+        	printf("MOVE: tx=%d tz=%d\n", tx, tz);
+				send_mouse_move(tx, tz);
+			if (scroll)
 				if (arguments.verbose)
-					printf("SCROLL: dy=%d\n", dy);
-				send_scroll(dy);
+					printf("SCROLL: scroll=%d\n", scroll);
+				send_scroll(scroll);
 
 		} else if (sev.type == SPNAV_EVENT_BUTTON) {
 			if (sev.button.bnum == 0) {
@@ -164,7 +179,6 @@ int main(int argc, char **argv) {
 			} else if (sev.button.bnum == 1) {
 				send_button(BTN_RIGHT, sev.button.press);
 			}
-
     }
     spnav_remove_events(SPNAV_EVENT_MOTION);
 	}
