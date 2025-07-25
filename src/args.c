@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *argp_program_version = "Version: 0.5";
+const char *argp_program_version = "Version: 0.5.1";
 
 static char doc[] = "SpaceMouse to mouse control bridge.";
 
