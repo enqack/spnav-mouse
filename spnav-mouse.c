@@ -13,31 +13,37 @@ static char doc[] = "SpaceMouse to mouse control bridge.";
 const char *argp_program_version = "Version: 0.5";
 
 static struct argp_option options[] = {
-	{"sensitivity", 's', "SENSITIVITY", 0, "Set sensitivity" },
-	{"deadzone", 'd', "deadzone", 0, "Set deadzone" },
-  {"verbose", 'v', 0, 0, "Produce verbose output" },
-  {"grab",    'g', 0, 0, "Exclusively grab SpaceMouse" },
+	{"global-sensitivity",   's', "SENSITIVITY", 0, "Set global sensitivity" },
+	{"movement-sensitivity", 'm', "SENSITIVITY", 0, "Set movement sensitivity" },
+	{"scroll-sensitivity",   'r', "SENSITIVITY", 0, "Set scroll sensitivity" },
+	{"scroll-deadzone",      'd', "DEADZONE",    0, "Set scroll deadzone" },
+  {"verbose",              'v', 0,             0, "Produce verbose output" },
+  {"grab",    						 'g', 0,             0, "Exclusively grab SpaceMouse" },
   { 0 }
 };
 
-struct arguments
-{
-  char *sensitivity, *deadzone;
+struct arguments {
+  char *global_sensitivity, *movement_sensitivity, *scroll_sensitivity, *scroll_deadzone;
 	int verbose, grab;
 };
 
 static error_t
-parse_opt (int key, char *arg, struct argp_state *state)
-{
+parse_opt (int key, char *arg, struct argp_state *state) {
   struct arguments *arguments = state->input;
 
   switch (key)
     {
   	case 's':
-  		arguments->sensitivity = arg;
+  		arguments->global_sensitivity = arg;
+  		break;
+  	case 'm':
+  		arguments->movement_sensitivity = arg;
+  		break;
+  	case 'r':
+  		arguments->scroll_sensitivity = arg;
   		break;
   	case 'd':
-  		arguments->deadzone = arg;
+  		arguments->scroll_deadzone = arg;
   		break;
     case 'g':
       arguments->grab = 1;
@@ -135,8 +141,10 @@ int main(int argc, char **argv) {
   // defaults
 	arguments.grab = 0;
 	arguments.verbose = 0;
-  arguments.deadzone = "2";
-  arguments.sensitivity = "1.0";
+  arguments.scroll_deadzone = "2";
+	arguments.scroll_sensitivity = "0.025";
+	arguments.global_sensitivity = "0.5";
+	arguments.movement_sensitivity = "0.10";
 
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
@@ -147,11 +155,24 @@ int main(int argc, char **argv) {
 
 	setup_uinput();
 
+	// Set exclusive grab
 	spnav_cfg_set_grab(arguments.grab);
-	spnav_cfg_set_sens(atof(arguments.sensitivity));
 
-	// Clamp deadzone axis between 0 and spnav_dev_axes-1
-  spnav_cfg_set_deadzone(4, atoi(arguments.deadzone));
+	// Set global sensitivity
+	spnav_cfg_set_sens(atof(arguments.global_sensitivity));
+
+	// Set axis sensitivity
+	float sens_array[6];
+	sens_array[0] = atof(arguments.movement_sensitivity);
+	sens_array[1] = atof(arguments.movement_sensitivity);
+  sens_array[2] = atof(arguments.movement_sensitivity);
+	sens_array[3] = 1.0;
+	sens_array[4] = atof(arguments.scroll_sensitivity);
+	sens_array[5] = 1.0;
+	spnav_cfg_set_axis_sens(sens_array);
+
+	// Set scroll deadzone
+  spnav_cfg_set_deadzone(4, atoi(arguments.scroll_deadzone));
 
 	spnav_event sev;
 
